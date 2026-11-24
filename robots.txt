@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://to4ilka.by/sitemap.xml

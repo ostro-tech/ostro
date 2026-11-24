@@ -1,7 +1,12 @@
-// Генерация искр в hero-секции — отсылка к точильному кругу
+// Искры в hero — отсылка к точильному кругу
 (function sparks(){
   const field = document.getElementById('sparkField');
-  if (!field) return;
+  const hero = document.querySelector('.hero');
+  if (!field || !hero) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let running = false;
+  let timer = null;
 
   function spawnSpark(){
     const vh = window.innerHeight;
@@ -11,15 +16,12 @@
     const spark = document.createElement('div');
     spark.className = 'spark';
 
-    const angle = (Math.random() * 70 + 200) * Math.PI / 180; // летят влево-вверх
+    const angle = (Math.random() * 70 + 200) * Math.PI / 180;
     const dist = 60 + Math.random() * 140;
-    const dx = Math.cos(angle) * dist;
-    const dy = Math.sin(angle) * dist;
-
     spark.style.left = originX + 'px';
     spark.style.top = originY + 'px';
-    spark.style.setProperty('--dx', dx + 'px');
-    spark.style.setProperty('--dy', dy + 'px');
+    spark.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    spark.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
     spark.style.animationDuration = (1 + Math.random()) + 's';
 
     field.appendChild(spark);
@@ -27,37 +29,36 @@
   }
 
   function loop(){
+    if (!running) return;
     const burst = 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < burst; i++) spawnSpark();
-    setTimeout(loop, 250 + Math.random() * 400);
+    timer = setTimeout(loop, 250 + Math.random() * 400);
   }
 
-  // Останавливаем искры за пределами hero, чтобы не тратить ресурсы
-  const hero = document.querySelector('.hero');
-  const observer = new IntersectionObserver((entries) => {
+  new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) loop();
+      if (entry.isIntersecting && !running) { running = true; loop(); }
+      else if (!entry.isIntersecting) { running = false; clearTimeout(timer); }
     });
-  }, { threshold: 0.1 });
-  if (hero) observer.observe(hero);
+  }, { threshold: 0.1 }).observe(hero);
 })();
 
-// Лёгкое появление карточек/блоков при скролле
+// Появление блоков при скролле
 (function reveal(){
   const targets = document.querySelectorAll('.card, .why__item, .process__list li, .contact-card');
-  targets.forEach(el => {
-    el.style.opacity = 0;
-    el.style.transform = 'translateY(16px)';
-    el.style.transition = 'opacity .5s ease, transform .5s ease';
-  });
+  if (!targets.length) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  targets.forEach(el => el.classList.add('reveal'));
 
   const io = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = 1;
-        entry.target.style.transform = 'translateY(0)';
-        io.unobserve(entry.target);
-      }
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      el.classList.add('is-visible');
+      io.unobserve(el);
+      // после появления отдаём управление hover-стилям элемента
+      setTimeout(() => el.classList.remove('reveal', 'is-visible'), 600);
     });
   }, { threshold: 0.15 });
 
